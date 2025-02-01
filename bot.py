@@ -1,10 +1,11 @@
+import os
 import telebot
 import openai
 
-# توکن‌ها
-TELEGRAM_TOKEN = "8004548236:AAEysYT6iCQXcl02OiAjb9U346ZxgIKgwZc"
-OPENAI_API_KEY = "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"
-ALLOWED_USER_ID = 2xqy1251
+# دریافت توکن‌ها از متغیرهای محیطی
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ALLOWED_USER_ID = int(os.getenv("ALLOWED_USER_ID"))
 
 # تنظیم OpenAI
 openai.api_key = OPENAI_API_KEY
