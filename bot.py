@@ -10,7 +10,7 @@ ALLOWED_USER_ID = int(os.getenv("ALLOWED_USER_ID"))
 # راه‌اندازی مدل Hugging Face
 model_name = "deepseek-ai/DeepSeek-R1"
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=HF_API_KEY)
-model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=HF_API_KEY)
+model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=HF_API_KEY, trust_remote_code=True)  # اضافه کردن trust_remote_code
 
 # ایجاد ربات تلگرام
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
