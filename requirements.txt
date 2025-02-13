@@ -1,6 +1,6 @@
 pyTelegramBotAPI==4.0.1
 torch==2.2.0
-flash_attn
+flash_attn==2.5.0
 transformers==4.39.0
 python-telegram-bot==20.3
 openai==0.27.8
