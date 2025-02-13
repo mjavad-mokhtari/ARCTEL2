@@ -8,7 +8,7 @@ HF_API_KEY = os.getenv("HF_API_KEY")
 ALLOWED_USER_ID = int(os.getenv("ALLOWED_USER_ID"))
 
 # راه‌اندازی مدل Hugging Face
-model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+model_name = "deepseek-ai/DeepSeek-R1"
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=HF_API_KEY)
 model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=HF_API_KEY)
 
