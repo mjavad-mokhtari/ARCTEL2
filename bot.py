@@ -26,6 +26,34 @@ def query_huggingface(prompt):
     result = response.json()
     return result.get("generated_text", "متوجه نشدم، دوباره بپرسید.")
 
+# تست اتصال به تلگرام
+async def test_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        bot = await context.bot.get_me()
+        await update.message.reply_text(f"اتصال به تلگرام برقرار است. نام بات: {bot.first_name}")
+    except Exception as e:
+        await update.message.reply_text(f"خطا در اتصال به تلگرام: {e}")
+
+# تست اتصال به Hugging Face
+async def test_huggingface(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        response = query_huggingface("test")
+        if "generated_text" in response:
+            await update.message.reply_text("اتصال به Hugging Face برقرار است.")
+        else:
+            await update.message.reply_text("خطا در اتصال به Hugging Face.")
+    except Exception as e:
+        await update.message.reply_text(f"خطا در اتصال به Hugging Face: {e}")
+
+# تست عملکرد مدل Hugging Face
+async def test_huggingface_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        # ارسال یک درخواست ساده به مدل
+        response = query_huggingface("Hello, how are you?")
+        await update.message.reply_text(f"پاسخ مدل: {response}")
+    except Exception as e:
+        await update.message.reply_text(f"خطا در اجرای مدل Hugging Face: {e}")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("سلام! من ربات معماری هستم. سوالات خود را بپرسید یا مقاله ارسال کنید.")
 
@@ -57,8 +85,12 @@ async def save_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
+    # اضافه کردن دستورات جدید
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("article", save_article))
+    application.add_handler(CommandHandler("test_telegram", test_telegram))
+    application.add_handler(CommandHandler("test_huggingface", test_huggingface))
+    application.add_handler(CommandHandler("test_huggingface_model", test_huggingface_model))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.run_polling()
