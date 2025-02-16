@@ -13,6 +13,9 @@ MODELS = {
     "deepseek-llm-7b": "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b",
     "deepseek-v3": "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3",
     "janus-pro-7b": "https://api-inference.huggingface.co/models/deepseek-ai/Janus-Pro-7B",
+    "parsgpt": "https://api-inference.huggingface.co/models/bolbolzaban/gpt2-fa",  # ParsGPT
+    "distilgpt2-farsi": "https://api-inference.huggingface.co/models/bolbolzaban/distilgpt2-fa",  # DistilGPT2-Farsi
+    "mt5-small": "https://api-inference.huggingface.co/models/google/mt5-small",  # mT5-small
 }
 
 # حافظه بلندمدت (در حافظه داخلی - برای حالت بلندمدت باید دیتابیس اضافه شود)
@@ -24,7 +27,7 @@ def query_huggingface(prompt, model_name="deepseek-llm-7b"):
         "Authorization": f"Bearer {HF_API_KEY}",
         "Content-Type": "application/json",
     }
-    payload = {"inputs": prompt, "parameters": {"max_length": 500}}
+    payload = {"inputs": prompt, "parameters": {"max_length": 200}}  # محدودیت طول پاسخ
     
     try:
         response = requests.post(
@@ -42,7 +45,7 @@ def query_huggingface(prompt, model_name="deepseek-llm-7b"):
 # --- تست اتصال به Hugging Face ---
 async def test_huggingface(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        test_response = query_huggingface("Hello, can you respond?")
+        test_response = query_huggingface("سلام، می‌تونی پاسخ بدی؟")
         await update.message.reply_text(f"✅ تست اتصال به Hugging Face موفقیت‌آمیز بود:\n{test_response}")
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در اتصال به Hugging Face:\n{str(e)}")
@@ -101,7 +104,12 @@ async def show_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     memory.append({"role": "user", "content": user_message})
-    context_str = "\n".join([f"{m['role']}: {m['content']}" for m in memory[-5:]])
+    
+    # محدود کردن حافظه به ۵ پیام اخیر
+    if len(memory) > 5:
+        memory.pop(0)
+    
+    context_str = "\n".join([f"{m['role']}: {m['content']}" for m in memory])
     
     # استفاده از مدل انتخابی کاربر (یا مدل پیش‌فرض)
     current_model = context.user_data.get("current_model", "deepseek-llm-7b")
