@@ -1,56 +1,67 @@
 import os
-import telebot
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import json
+import requests
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # دریافت توکن‌ها از متغیرهای محیطی
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HF_API_KEY = os.getenv("HF_API_KEY")
-ALLOWED_USER_ID = int(os.getenv("ALLOWED_USER_ID"))
 
-# راه‌اندازی مدل Hugging Face
-model_name = "deepseek-ai/DeepSeek-R1"
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=HF_API_KEY)
-model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=HF_API_KEY, trust_remote_code=True)  # اضافه کردن trust_remote_code
+# حافظه بلندمدت (در حافظه داخلی - برای حالت بلندمدت باید دیتابیس اضافه شود)
+memory = []
 
-# ایجاد ربات تلگرام
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+# ارسال درخواست به Hugging Face
+def query_huggingface(prompt):
+    headers = {
+        "Authorization": f"Bearer {HF_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {"inputs": prompt, "parameters": {"max_length": 500}}
+    response = requests.post(
+        "https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill",
+        headers=headers,
+        json=payload,
+    )
+    result = response.json()
+    return result.get("generated_text", "متوجه نشدم، دوباره بپرسید.")
 
-# پایگاه دانش (در حافظه)
-knowledge_base = {}
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("سلام! من ربات معماری هستم. سوالات خود را بپرسید یا مقاله ارسال کنید.")
 
-def is_allowed_user(user_id):
-    return user_id == ALLOWED_USER_ID
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_message = update.message.text
 
-# آموزش ربات
-@bot.message_handler(commands=['train'])
-def train_bot(message):
-    if not is_allowed_user(message.from_user.id):
-        bot.reply_to(message, "شما اجازه آموزش ربات را ندارید.")
-        return
-    try:
-        data = message.text.split(" ", 1)[1]
-        question, answer = data.split("|")
-        knowledge_base[question.strip()] = answer.strip()
-        bot.reply_to(message, "پرسش و پاسخ ذخیره شد!")
-    except Exception:
-        bot.reply_to(message, "فرمت صحیح: /train پرسش | پاسخ")
+    # ذخیره مکالمه در حافظه
+    memory.append({"role": "user", "content": user_message})
 
-# پاسخ به سوالات
-@bot.message_handler(func=lambda message: True)
-def respond_to_user(message):
-    user_message = message.text.strip()
+    # ترکیب پیام‌های قبلی برای حافظه کوتاه‌مدت
+    context_str = "\n".join([f"{m['role']}: {m['content']}" for m in memory[-5:]])
 
-    if user_message in knowledge_base:
-        bot.reply_to(message, knowledge_base[user_message])
-        return
+    # ارسال به مدل Hugging Face
+    response = query_huggingface(context_str)
 
-    try:
-        inputs = tokenizer(user_message, return_tensors="pt")
-        outputs = model.generate(**inputs, max_new_tokens=150)
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        bot.reply_to(message, response)
-    except Exception as e:
-        bot.reply_to(message, f"خطایی رخ داد: {e}")
+    # ذخیره پاسخ در حافظه
+    memory.append({"role": "assistant", "content": response})
 
-# راه‌اندازی ربات
-bot.polling()
+    await update.message.reply_text(response)
+
+async def save_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        article = " ".join(context.args)
+        memory.append({"role": "article", "content": article})
+        await update.message.reply_text("مقاله ذخیره شد و در پاسخ‌های آینده استفاده خواهد شد.")
+    else:
+        await update.message.reply_text("لطفاً مقاله را پس از دستور /article وارد کنید.")
+
+def main():
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("article", save_article))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
