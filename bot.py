@@ -14,10 +14,14 @@ MODELS = {
     "deepseek-v3": "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3",
     "janus-pro-7b": "https://api-inference.huggingface.co/models/deepseek-ai/Janus-Pro-7B",
     "mt5-small": "https://api-inference.huggingface.co/models/google/mt5-small",  # mT5-small
+    "xlm-roberta": "https://api-inference.huggingface.co/models/xlm-roberta-base",  # XLM-RoBERTa
+    "mbart-small": "https://api-inference.huggingface.co/models/facebook/mbart-large-50",  # mBART
+    "lamini-lm": "https://api-inference.huggingface.co/models/MBZUAI/LaMini-LM-124M",  # LaMini-LM
+    "gpt-neox-small": "https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M",  # GPT-NeoX
 }
 
 # مدل پیش‌فرض
-DEFAULT_MODEL = "deepseek-v3"
+DEFAULT_MODEL = "mt5-small"
 
 # حافظه بلندمدت (در حافظه داخلی - برای حالت بلندمدت باید دیتابیس اضافه شود)
 memory = []
