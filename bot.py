@@ -8,11 +8,18 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HF_API_KEY = os.getenv("HF_API_KEY")
 
+# تعریف مدل‌ها
+MODELS = {
+    "deepseek-llm-7b": "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b",
+    "deepseek-v3": "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3",
+    "janus-pro-7b": "https://api-inference.huggingface.co/models/deepseek-ai/Janus-Pro-7B",
+}
+
 # حافظه بلندمدت (در حافظه داخلی - برای حالت بلندمدت باید دیتابیس اضافه شود)
 memory = []
 
-# --- ارسال درخواست به مدل Hugging Face (مدل سبک‌تر DeepSeek 7B) ---
-def query_huggingface(prompt):
+# --- ارسال درخواست به مدل Hugging Face (با پشتیبانی از مدل‌های مختلف) ---
+def query_huggingface(prompt, model_name="deepseek-llm-7b"):
     headers = {
         "Authorization": f"Bearer {HF_API_KEY}",
         "Content-Type": "application/json",
@@ -21,7 +28,7 @@ def query_huggingface(prompt):
     
     try:
         response = requests.post(
-            "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b",
+            MODELS[model_name],  # استفاده از آدرس مدل انتخابی
             headers=headers,
             json=payload,
         )
@@ -58,7 +65,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 /test_huggingface - تست اتصال به Hugging Face\n"
         "🧪 /test_huggingface_model - تست عملکرد مدل Hugging Face\n"
         "📚 /article [متن مقاله] - ذخیره مقاله\n"
+        "🛠️ /set_model [نام مدل] - تغییر مدل هوش مصنوعی\n"
+        "🔍 /show_model - نمایش مدل فعلی\n"
         "✉️ پیام مستقیم - ارسال به مدل و دریافت پاسخ\n"
+        "مدل‌های موجود:\n" + "\n".join(MODELS.keys())
     )
 
 # --- ذخیره مقاله در حافظه داخلی ---
@@ -70,12 +80,33 @@ async def save_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ لطفاً مقاله را پس از دستور /article وارد کنید.")
 
+# --- دستور برای تغییر مدل ---
+async def set_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        model_name = context.args[0]
+        if model_name in MODELS:
+            context.user_data["current_model"] = model_name
+            await update.message.reply_text(f"✅ مدل به {model_name} تغییر یافت.")
+        else:
+            await update.message.reply_text("⚠️ مدل نامعتبر است. مدل‌های موجود:\n" + "\n".join(MODELS.keys()))
+    else:
+        await update.message.reply_text("⚠️ لطفاً نام مدل را پس از دستور /set_model وارد کنید.")
+
+# --- دستور برای نمایش مدل فعلی ---
+async def show_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    current_model = context.user_data.get("current_model", "deepseek-llm-7b")
+    await update.message.reply_text(f"🛠️ مدل فعلی: {current_model}")
+
 # --- مدیریت پیام‌های متنی و پاسخ از مدل ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     memory.append({"role": "user", "content": user_message})
     context_str = "\n".join([f"{m['role']}: {m['content']}" for m in memory[-5:]])
-    response = query_huggingface(context_str)
+    
+    # استفاده از مدل انتخابی کاربر (یا مدل پیش‌فرض)
+    current_model = context.user_data.get("current_model", "deepseek-llm-7b")
+    response = query_huggingface(context_str, model_name=current_model)
+    
     memory.append({"role": "assistant", "content": response})
     await update.message.reply_text(response)
 
@@ -93,6 +124,8 @@ def main():
     application.add_handler(CommandHandler("test_telegram", test_telegram))
     application.add_handler(CommandHandler("test_huggingface", test_huggingface))
     application.add_handler(CommandHandler("test_huggingface_model", test_huggingface_model))
+    application.add_handler(CommandHandler("set_model", set_model))  # دستور جدید
+    application.add_handler(CommandHandler("show_model", show_model))  # دستور جدید
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.run_polling()
