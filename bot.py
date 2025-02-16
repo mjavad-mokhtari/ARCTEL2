@@ -13,21 +13,30 @@ MODELS = {
     "deepseek-llm-7b": "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b",
     "deepseek-v3": "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3",
     "janus-pro-7b": "https://api-inference.huggingface.co/models/deepseek-ai/Janus-Pro-7B",
-    "parsgpt": "https://api-inference.huggingface.co/models/bolbolzaban/gpt2-fa",  # ParsGPT
-    "distilgpt2-farsi": "https://api-inference.huggingface.co/models/bolbolzaban/distilgpt2-fa",  # DistilGPT2-Farsi
     "mt5-small": "https://api-inference.huggingface.co/models/google/mt5-small",  # mT5-small
 }
+
+# مدل پیش‌فرض
+DEFAULT_MODEL = "deepseek-v3"
 
 # حافظه بلندمدت (در حافظه داخلی - برای حالت بلندمدت باید دیتابیس اضافه شود)
 memory = []
 
 # --- ارسال درخواست به مدل Hugging Face (با پشتیبانی از مدل‌های مختلف) ---
-def query_huggingface(prompt, model_name="deepseek-llm-7b"):
+def query_huggingface(prompt, model_name=DEFAULT_MODEL):
     headers = {
         "Authorization": f"Bearer {HF_API_KEY}",
         "Content-Type": "application/json",
     }
-    payload = {"inputs": prompt, "parameters": {"max_length": 200}}  # محدودیت طول پاسخ
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_length": 500,  # افزایش طول پاسخ
+            "temperature": 0.7,  # تنظیم دما
+            "top_k": 50,  # محدود کردن انتخاب‌ها
+            "top_p": 0.9,  # تنظیم برای پاسخ‌های متنوع‌تر
+        },
+    }
     
     try:
         response = requests.post(
@@ -97,7 +106,7 @@ async def set_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- دستور برای نمایش مدل فعلی ---
 async def show_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    current_model = context.user_data.get("current_model", "deepseek-llm-7b")
+    current_model = context.user_data.get("current_model", DEFAULT_MODEL)
     await update.message.reply_text(f"🛠️ مدل فعلی: {current_model}")
 
 # --- مدیریت پیام‌های متنی و پاسخ از مدل ---
@@ -112,7 +121,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context_str = "\n".join([f"{m['role']}: {m['content']}" for m in memory])
     
     # استفاده از مدل انتخابی کاربر (یا مدل پیش‌فرض)
-    current_model = context.user_data.get("current_model", "deepseek-llm-7b")
+    current_model = context.user_data.get("current_model", DEFAULT_MODEL)
     response = query_huggingface(context_str, model_name=current_model)
     
     memory.append({"role": "assistant", "content": response})
